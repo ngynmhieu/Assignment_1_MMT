@@ -4,7 +4,7 @@ import hashlib
 from collections import OrderedDict
 import tkinter as tk
 from tkinter import filedialog
-import bittorent_client
+ 
 # Kieu du lieu torrent
 
 class Torrent:
@@ -76,7 +76,7 @@ def open_file(root, filepath):
 def import_file():
     root = tk.Tk()
     filepath = []
-    button = tk.Button(root, text="Mở tệp", command=lambda: open_file(root, filepath))
+    button = tk.Button(root, text="Open file", command=lambda: open_file(root, filepath))
     button.pack()
     root.mainloop()
     return filepath[0]
@@ -86,4 +86,22 @@ def ImAndCreate():
     create_torrent(filepath, 256)
     print("Successfully create torrent file")
 
-#Peer asking to participate in tracker network        
+#Convert torrent file to hash code
+   
+def torrent2hash(filename):
+    h = hashlib.md5()
+
+    # mở file để đọc ở chế độ nhị phân
+    with open(filename,'rb') as file:
+        # lặp cho đến cuối file
+        chunk = 0
+        while chunk != b'':
+            # chỉ đọc 1024 byte mỗi lần
+            chunk = file.read(1024)
+            h.update(chunk)
+
+    # trả về biểu diễn thập lục phân của digest
+    return h.hexdigest()
+
+# Gọi hàm để hash file
+print(hash_file("mytorrentfile.torrent"))

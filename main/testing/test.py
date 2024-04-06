@@ -1,12 +1,22 @@
-import tkinter as tk
-from tkinter import filedialog
+import socket
 
-def open_file():
-    filepath = filedialog.askopenfilename()
-    print(f"Đã mở tệp: {filepath}")
+def connect_to_tracker(tracker_host, tracker_port):
+    # Tạo một socket
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-root = tk.Tk()
-button = tk.Button(root, text="Mở tệp", command=open_file)
-button.pack()
+    try:
+        # Kết nối đến tracker
+        sock.connect((tracker_host, tracker_port))
+        print(f"Đã kết nối đến tracker tại {tracker_host}:{tracker_port}")
+    except socket.error as e:
+        print(f"Không thể kết nối đến tracker: {e}")
+    finally:
+        # Đảm bảo rằng socket luôn được đóng lại sau khi sử dụng
+        sock.close()
 
-root.mainloop()
+# Thông tin về tracker
+tracker_host = "127.0.0.1"  # Địa chỉ IP cục bộ
+tracker_port = 1234  # Port mặc định của BitTorrent
+
+# Kết nối đến tracker
+connect_to_tracker(tracker_host, tracker_port)
