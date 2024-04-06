@@ -1,1 +1,0 @@
-b'announce': b'tracker.py'//nb'info': OrderedDict([(b'length', 411490), (b'name', b'test.pdf'), (b'piece length', 524288), (b'pieces', b'd \xeb\x16&\x16\x08\xea\x9f\xd7\xb9\x8cw6\xfbZ\xd8\xe0\x03c')])//n

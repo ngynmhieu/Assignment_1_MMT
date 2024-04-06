@@ -1,7 +1,10 @@
 import bencodepy
 import os
 import hashlib
-
+from collections import OrderedDict
+import tkinter as tk
+from tkinter import filedialog
+import bittorent_client
 # Kieu du lieu torrent
 
 class Torrent:
@@ -26,17 +29,21 @@ class Torrent:
 
 
 
-# tao file torrent (chi can thong tin cua file)
-def create_torrent(file_path):
+# tao file torrent tu file_path
+def create_torrent(file_path, piece_length):
+    piece_length = piece_length*1024;
     with open(file_path, 'rb') as f:
         file_data = f.read()
-    sha1_hash = hashlib.sha1(file_data).digest()
+
+    # chia file thanh tung manh 512 KB
+    pieces = [file_data[i:i+piece_length] for i in range(0, len(file_data), piece_length)]
+    sha1_hashes = b''.join(hashlib.sha1(piece).digest() for piece in pieces)
 
     torrent_info = {
         'length': os.path.getsize(file_path),
         'name': os.path.basename(file_path),
-        'piece length': 524288,  # Kích thước phần là 512KB
-        'pieces': sha1_hash
+        'piece length': piece_length,  # Kích thước phần là 512KB
+        'pieces': sha1_hashes
     }
     
     torrent = {
@@ -44,45 +51,39 @@ def create_torrent(file_path):
         'info': torrent_info
     }
     torrent_bencoded = bencodepy.encode(torrent)
-    with open('test.torrent', 'wb') as f:
+    with open('C:/Users/Minh Hieu/OneDrive/Desktop/MMT_A1/Assignment_1_MMT/main/testing/test.torrent', 'wb') as f:
         f.write(torrent_bencoded)
-        
-        
-def torrent_to_text(torrent_file_path, text_file_path):
-    # Read the torrent file
-    with open(torrent_file_path, 'rb') as f:
-        content = f.read()
+      
+# Read torrent file
+def read_torrent_file(file_path):
+    with open(file_path, 'rb') as f:
+        torrent_data = bencodepy.decode(f.read())
+    announce = torrent_data[b'announce'].decode('utf-8')
+    info_temp = torrent_data[b'info']
+    infor_temp = OrderedDict(info_temp)
+    
+    info = dict(infor_temp)
+    info = {key.decode('utf-8'): (value if key == b'pieces' else value.decode('utf-8', errors='ignore')) if isinstance(value, bytes) else value for key, value in info.items()}
+    
+    return Torrent(announce, info)
 
-    # Decode the content using bencode
-    metainfo = bencodepy.decode(content)
+#import and create torrent file from browser
+def open_file(root, filepath):
+    filepath.append(filedialog.askopenfilename())
+    print(f"Open: {filepath[0]}")
+    root.destroy()
 
-    # Write the metainfo to a text file
-    with open(text_file_path, 'w') as f:
-        for key, value in metainfo.items():
-            f.write(f"{key}: {value}//n")
+def import_file():
+    root = tk.Tk()
+    filepath = []
+    button = tk.Button(root, text="Mở tệp", command=lambda: open_file(root, filepath))
+    button.pack()
+    root.mainloop()
+    return filepath[0]
+    
+def ImAndCreate():
+    filepath = import_file()
+    create_torrent(filepath, 256)
+    print("Successfully create torrent file")
 
-# Sử dụng hàm
-# create_torrent('test.pdf')
-torrent_to_text('test.torrent', 'test.txt')
-
-
-
-
-
-
-
-# class TorrentFile:
-#     def __init__(self, announce, info_file, length, name, piece_length, pieces):
-#         self.announce = announce
-#         self.info_file = info_file
-#         self.length = length
-#         self.name = name
-#         self.piece_length = piece_length
-#         self.pieces = pieces
-
-
-# Call the function with a sample torrent file and a text file
-# # torrent_to_text("sample.torrent", "output.txt")  # Uncomment this line and replace "sample.torrent" and "output.txt" with your actual file paths
-
-
-# torrent_to_text("YoloHome___AIoT_v2.torrent", "C:/Users/Minh Hieu/OneDrive/Desktop/MMT_A1/Assignment_1_MMT/test.txt")
+#Peer asking to participate in tracker network        
