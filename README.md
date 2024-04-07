@@ -10,3 +10,5 @@
 - trường piece trong file torrent giúp đảm bảm khi tải, các mảnh được tải về sẽ trùng khớp với mã hash trong piece
 
  ## Torrent.py
+ ## Tracker.py
+ 

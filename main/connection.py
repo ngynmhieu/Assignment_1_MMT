@@ -58,7 +58,7 @@ def send_tracker_request(sock, tracker_host, tracker_port, info_hash, peer_id):
         print(f"Connected with tracker at {tracker_host}:{tracker_port}")
 
         params = urllib.parse.urlencode({'info_hash': info_hash, 
-                                         'peer_id': peer_id, 'port': 6881, 
+                                         'peer_id': peer_id, 'port': 1234, 
                                          'uploaded': 0, 'downloaded': 0, 
                                          'left': 0, 'event': 'started'})
         request = f"GET /announce?{params} HTTP/1.1\r\nHost: {tracker_host}:{tracker_port}\r\nConnection: close\r\n\r\n"
