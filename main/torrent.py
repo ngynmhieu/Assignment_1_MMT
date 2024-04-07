@@ -97,15 +97,8 @@ def torrent2hash(info):
         if isinstance(info[key], bytes):
             info[key] = info[key].decode('utf-8', errors='ignore')
     
-    # Chuyển đổi dict thành chuỗi JSON
     info_str = json.dumps(info, sort_keys=True)
-    
-    # Tạo một đối tượng SHA1
     sha1 = hashlib.sha1()
-    
-    # Cung cấp dữ liệu cho đối tượng SHA1
     sha1.update(info_str.encode())
-    
-    # Trả về mã hash SHA1 của thông tin
     return sha1.hexdigest()
    
