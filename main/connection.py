@@ -1,7 +1,8 @@
 import socket
 import urllib.parse
 import requests
-from flask import Flask, request
+from flask import Flask, request, jsonify
+import json
 #tracker connection
 # class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
 
@@ -88,6 +89,14 @@ def send_request_to_tracker(tracker_host, info_hash, peer_id, port, uploaded, do
     
     if response.status_code == 200:
         print('Request sent successfully.')
+        try:
+            # Phân tích cú pháp đối tượng JSON trong phản hồi
+            response_json = json.loads(response.text)
+            # Lấy và in danh sách peers
+            peers = response_json.get('peers', [])
+            print('Received list of peers:', peers)
+        except json.JSONDecodeError:
+            print('Failed to parse response as JSON or no json file')
     else:
         print('Failed to send request.')
 

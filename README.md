@@ -20,7 +20,10 @@
  - completed: chưa biết làm gì (Updating)
  ### handle_request(): Dùng để xử lý các yêu cầu get được gửi tới
  - array swarm[] dùng để lưu trữ thông tin các peer gửi request tới, khi một peer yêu cầu dowload thì sẽ gửi danh sách các peer chứa file yêu cầu cho client đó
+ - nếu trường left > 0 nghĩa là đây là request yêu cầu tải. tracker sẽ gửi danh sách các peer cho client thông qua json
  ## Peer.py
+ ### send_request_to_tracker(): Dùng để gửi request và nhận response từ tracker
+ - Danh sách các peer là dạng dict()
 
 ### Uploading (Peer)
 - Gửi request start tới tracker thông qua hàm send_request_to_tracker

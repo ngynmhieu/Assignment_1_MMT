@@ -1,4 +1,4 @@
-from flask import Flask, request
+from flask import Flask, request, jsonify
 
 app = Flask(__name__)
 swarm = []
@@ -20,7 +20,6 @@ def handle_request_event(peer_info, info_hash, peer_id, port, uploaded, download
     elif event == "completed":
         return
 
-        
 
 
 
@@ -49,12 +48,9 @@ def handle_request():
         return 'Invalid event', 400
     handle_request_event(peer_info, info_hash, peer_id, port, uploaded, downloaded, left, event)
 
+    if int(left) > 0:
+        return {'peers': swarm}, 200
     print (swarm)
-
-
-
-
-
 
     return 'Peer added to swarm successfully.', 200
 
