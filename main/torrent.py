@@ -4,12 +4,14 @@ import hashlib
 from collections import OrderedDict
 import tkinter as tk
 from tkinter import filedialog
+import json
  
 # Kieu du lieu torrent
 
 class Torrent:
     def __init__(self, announce, info):
         self.announce = announce
+        self.info = info
         self.length = info.get('length')
         self.name = info.get('name')
         self.piece_length = info.get('piece length')
@@ -25,6 +27,9 @@ class Torrent:
         return self.piece_length
     def get_pieces(self):
         return self.pieces
+    def get_info(self):
+        return self.info
+
     
 
 
@@ -85,23 +90,22 @@ def ImAndCreate():
     filepath = import_file()
     create_torrent(filepath, 256)
     print("Successfully create torrent file")
-
-#Convert torrent file to hash code
+    
+def torrent2hash(info):
+    # Chuyển đổi giá trị bytes thành str
+    for key in info:
+        if isinstance(info[key], bytes):
+            info[key] = info[key].decode('utf-8', errors='ignore')
+    
+    # Chuyển đổi dict thành chuỗi JSON
+    info_str = json.dumps(info, sort_keys=True)
+    
+    # Tạo một đối tượng SHA1
+    sha1 = hashlib.sha1()
+    
+    # Cung cấp dữ liệu cho đối tượng SHA1
+    sha1.update(info_str.encode())
+    
+    # Trả về mã hash SHA1 của thông tin
+    return sha1.hexdigest()
    
-def torrent2hash(filename):
-    h = hashlib.md5()
-
-    # mở file để đọc ở chế độ nhị phân
-    with open(filename,'rb') as file:
-        # lặp cho đến cuối file
-        chunk = 0
-        while chunk != b'':
-            # chỉ đọc 1024 byte mỗi lần
-            chunk = file.read(1024)
-            h.update(chunk)
-
-    # trả về biểu diễn thập lục phân của digest
-    return h.hexdigest()
-
-# Gọi hàm để hash file
-print(hash_file("mytorrentfile.torrent"))
