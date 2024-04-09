@@ -35,6 +35,7 @@ def handle_request():
     event = request.args.get('event')
 
     peer_info = {
+        'ip': request.remote_addr,
         'info_hash': info_hash,
         'peer_id': peer_id,
         'port': port,
