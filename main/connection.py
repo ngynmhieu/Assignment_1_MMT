@@ -3,6 +3,7 @@ import urllib.parse
 import requests
 from flask import Flask, request, jsonify
 import json
+import hashlib
 #tracker connection
 # class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
 
@@ -73,6 +74,32 @@ import json
     #     print(f"Cannot connect to tracker: {e}")
     # finally:
     #     sock.close()
+
+def hash_to_metainfo(hex_hash):
+    # Convert the hexadecimal hash to a binary hash
+    binary_hash = bytes.fromhex(hex_hash)
+
+    # The metainfo file structure
+    metainfo = {
+        'announce': 'http://tracker.example.com/announce',
+        'info': {
+            'files': [
+                {'length': 111, 'path': ['111.txt']},
+                {'length': 222, 'path': ['222.txt']}
+            ],
+            'name': 'directoryName',
+            'piece length': 262144,
+            'pieces': '<binary SHA1 hashes>'
+        }
+    }
+
+    # Replace placeholder with actual binary hashes
+    metainfo['info']['pieces'] = binary_hash
+
+    # Convert the metainfo to a JSON string
+    metainfo_json = json.dumps(metainfo, indent=4)
+
+    return metainfo_json
         
 def send_request_to_tracker(tracker_host, info_hash, peer_id, port, uploaded, downloaded, left, event):
     params = {
