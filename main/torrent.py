@@ -52,7 +52,7 @@ def create_torrent(file_path, piece_length):
     }
     
     torrent = {
-        'announce': 'tracker.py',
+        'announce': '127.0.0.1',
         'info': torrent_info
     }
     torrent_bencoded = bencodepy.encode(torrent)
@@ -84,7 +84,11 @@ def import_file():
     button = tk.Button(root, text="Open file", command=lambda: open_file(root, filepath))
     button.pack()
     root.mainloop()
-    return filepath[0]
+    if filepath:  # Kiểm tra xem danh sách có trống không
+        return filepath[0]
+    else:
+        print("No file selected.")
+        return None
     
 def ImAndCreate():
     filepath = import_file()
@@ -101,4 +105,6 @@ def torrent2hash(info):
     sha1 = hashlib.sha1()
     sha1.update(info_str.encode())
     return sha1.hexdigest()
-   
+
+
+

@@ -75,6 +75,7 @@ import hashlib
     # finally:
     #     sock.close()
 
+# PEER SIDE
 def hash_to_metainfo(hex_hash):
     # Convert the hexadecimal hash to a binary hash
     binary_hash = bytes.fromhex(hex_hash)
@@ -101,7 +102,7 @@ def hash_to_metainfo(hex_hash):
 
     return metainfo_json
         
-def send_request_to_tracker(tracker_host, info_hash, peer_id, port, uploaded, downloaded, left, event):
+def send_request_to_tracker(tracker_host, trasker_port, info_hash, peer_id, port, uploaded, downloaded, left, event):
     params = {
         'info_hash': info_hash,
         'peer_id': peer_id,
@@ -111,7 +112,7 @@ def send_request_to_tracker(tracker_host, info_hash, peer_id, port, uploaded, do
         'left': left,
         'event': event
     }
-    tracker_host = 'http://' + tracker_host + ':' + str(port)
+    tracker_host = 'http://' + tracker_host + ':' + str(trasker_port)
     response = requests.get(tracker_host, params=params)
     
     if response.status_code == 200:

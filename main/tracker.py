@@ -50,7 +50,8 @@ def handle_request():
     handle_request_event(peer_info, info_hash, peer_id, port, uploaded, downloaded, left, event)
 
     if int(left) > 0:
-        return {'peers': swarm}, 200
+        temp = [peer for peer in swarm if peer['left'] == '0' and peer['info_hash'] == info_hash]
+        return {'peers': temp}, 200
     print (swarm)
 
     return 'Peer added to swarm successfully.', 200

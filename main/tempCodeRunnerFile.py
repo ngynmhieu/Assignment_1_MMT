@@ -1,7 +1,1 @@
-    # print(f'Info hash: {info_hash}')
-    # print(f'Peer ID: {peer_id}')
-    # print(f'Port: {port}')
-    # print(f'Uploaded: {uploaded}')
-    # print(f'Downloaded: {downloaded}')
-    # print(f'Left: {left}')
-    # print(f'Event: {event}')
+
