@@ -8,7 +8,7 @@ def handle_request_event(peer_info, info_hash, peer_id, port, uploaded, download
     global swarm
     if event == "started":
         for existing_peer in swarm:
-            if existing_peer['peer_id'] == peer_info['peer_id']:
+            if existing_peer['peer_id'] == peer_info['peer_id'] and existing_peer['info_hash'] == info_hash:
                 existing_peer.update(peer_info)
                 return
         swarm.append(peer_info)
@@ -49,10 +49,11 @@ def handle_request():
         return 'Invalid event', 400
     handle_request_event(peer_info, info_hash, peer_id, port, uploaded, downloaded, left, event)
 
+    print (swarm)
+    print ('\n --------------------------------- \n')
     if int(left) > 0:
         temp = [peer for peer in swarm if peer['left'] == '0' and peer['info_hash'] == info_hash]
         return {'peers': temp}, 200
-    print (swarm)
 
     return 'Peer added to swarm successfully.', 200
 

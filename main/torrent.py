@@ -5,7 +5,8 @@ from collections import OrderedDict
 import tkinter as tk
 from tkinter import filedialog
 import json
- 
+from tkinter.filedialog import askdirectory
+from tkinter import Tk
 # Kieu du lieu torrent
 
 class Torrent:
@@ -16,6 +17,10 @@ class Torrent:
         self.name = info.get('name')
         self.piece_length = info.get('piece length')
         self.pieces = info.get ('pieces')
+        self.dowloaded = 0
+        self.uploaded = 0
+        self.left = self.length
+        self.info_hash = ''
     
     def get_announce(self):
         return self.announce
@@ -29,13 +34,95 @@ class Torrent:
         return self.pieces
     def get_info(self):
         return self.info
+    def get_dowloaded (self):
+        return self.dowloaded
+    def get_uploaded (self):
+        return self.uploaded
+    def get_left (self):
+        return self.left
+    def get_info_hash(self):
+        return self.info_hash
+    def set_dowloaded(self, dowloaded):
+        self.dowloaded = dowloaded
+    def set_uploaded(self, uploaded):
+        self.uploaded = uploaded
+    def set_left(self, left):
+        self.left = left
+    def set_info_hash (self, info_hash):
+        self.info_hash = info_hash
 
     
 
 
 
 # tao file torrent tu file_path
-def create_torrent(file_path, piece_length):
+
+      
+# Read torrent file
+def read_torrent_file(filepath):
+    with open(filepath, 'rb') as f:
+        torrent_data = bencodepy.decode(f.read())
+    announce = torrent_data[b'announce'].decode('utf-8')
+    info_temp = torrent_data[b'info']
+    infor_temp = OrderedDict(info_temp)
+    
+    info = dict(infor_temp)
+    info = {key.decode('utf-8'): (value if key == b'pieces' else value.decode('utf-8', errors='ignore')) if isinstance(value, bytes) else value for key, value in info.items()}
+    
+    return Torrent(announce, info)
+
+def open_file(root, filepath):
+    filepath.append(filedialog.askopenfilename())
+    print(f"Open: {filepath[0]}")
+    root.destroy()
+
+def import_file():
+    root = tk.Tk()
+    filepath = []
+    # button = tk.Button(root, text="Open file", command=lambda: open_file(root, filepath))
+    # button.pack()
+    root.after(0, lambda: open_file(root, filepath))
+    root.mainloop()
+    if filepath:  # Kiểm tra xem danh sách có trống không
+        return filepath[0]
+    else:
+        print("No file selected.")
+        return None
+
+def open_directory(root, despath):
+    despath.append(askdirectory())
+    print(f"Selected directory: {despath[0]}")
+    root.destroy()
+def choose_directory():
+    root = Tk()
+    despath = []
+    # button = tk.Button(root, text="Choose directory", command=lambda: open_directory(root, despath))
+    # button.pack()
+    root.after(0, lambda: open_directory(root, despath))
+    root.mainloop()
+    if despath:  # Check if the list is not empty
+        return despath[0]
+    else:
+        print("No directory selected.")
+        return None
+
+#import and create torrent file from browser
+# def open_files(root, filepaths):
+#     filepaths.extend(tk.filedialog.askopenfilenames())  # Sử dụng askopenfilenames để chọn nhiều tệp tin
+#     if filepaths:
+#         root.destroy()
+# def import_files():
+#     root = tk.Tk()
+#     filepaths = []
+#     root.after(0, lambda: open_files(root, filepaths))
+#     root.mainloop()
+#     if filepaths:  # Kiểm tra xem danh sách có trống không
+#         return filepaths
+#     else:
+#         print("No files selected.")
+#         return None
+
+def create_torrent_file(file_path, des_path, piece_length):
     piece_length = piece_length*1024;
     with open(file_path, 'rb') as f:
         file_data = f.read()
@@ -56,55 +143,121 @@ def create_torrent(file_path, piece_length):
         'info': torrent_info
     }
     torrent_bencoded = bencodepy.encode(torrent)
-    with open('C:/Users/Minh Hieu/OneDrive/Desktop/MMT_A1/Assignment_1_MMT/main/testing/test.torrent', 'wb') as f:
+    with open(des_path, 'wb') as f:
         f.write(torrent_bencoded)
-      
-# Read torrent file
-def read_torrent_file(file_path):
-    with open(file_path, 'rb') as f:
-        torrent_data = bencodepy.decode(f.read())
-    announce = torrent_data[b'announce'].decode('utf-8')
-    info_temp = torrent_data[b'info']
-    infor_temp = OrderedDict(info_temp)
-    
-    info = dict(infor_temp)
-    info = {key.decode('utf-8'): (value if key == b'pieces' else value.decode('utf-8', errors='ignore')) if isinstance(value, bytes) else value for key, value in info.items()}
-    
-    return Torrent(announce, info)
 
-#import and create torrent file from browser
-def open_file(root, filepath):
-    filepath.append(filedialog.askopenfilename())
-    print(f"Open: {filepath[0]}")
-    root.destroy()
 
-def import_file():
-    root = tk.Tk()
-    filepath = []
-    button = tk.Button(root, text="Open file", command=lambda: open_file(root, filepath))
-    button.pack()
-    root.mainloop()
-    if filepath:  # Kiểm tra xem danh sách có trống không
-        return filepath[0]
-    else:
-        print("No file selected.")
-        return None
-    
-def ImAndCreate():
-    filepath = import_file()
-    create_torrent(filepath, 256)
-    print("Successfully create torrent file")
-    
+def create_torrent_folder(folder_path, des_path, piece_length):
+    piece_length = piece_length*1024
+    torrent_info = {
+        'name': os.path.basename(folder_path),
+        'piece length': piece_length,
+        'files': []
+    }
+
+    all_data = b''
+    for root, dirs, files in os.walk(folder_path):
+        for file in files:
+            file_path = os.path.join(root, file)
+            with open(file_path, 'rb') as f:
+                file_data = f.read()
+            all_data += file_data
+            torrent_info['files'].append({
+                'length': len(file_data),
+                'path': file_path.replace(folder_path + os.sep, '').split(os.sep),
+            })
+
+    pieces = [all_data[i:i+piece_length] for i in range(0, len(all_data), piece_length)]
+    sha1_hashes = b''.join(hashlib.sha1(piece).digest() for piece in pieces)
+    torrent_info['pieces'] = sha1_hashes
+
+    torrent = {
+        'announce': '127.0.0.1',
+        'info': torrent_info
+    }
+    torrent_bencoded = bencodepy.encode(torrent)
+    with open(des_path, 'wb') as f:
+        f.write(torrent_bencoded)
+        
+
+
+
+# def ensure_str_keys(data):
+#     if isinstance(data, dict):
+#         return {str(key): ensure_str_keys(value) for key, value in data.items()}
+#     elif isinstance(data, (list, tuple)):
+#         return [ensure_str_keys(item) for item in data]
+#     else:
+#         return data
 def torrent2hash(info):
-    # Chuyển đổi giá trị bytes thành str
-    for key in info:
-        if isinstance(info[key], bytes):
-            info[key] = info[key].decode('utf-8', errors='ignore')
+    sorted_info = dict(sorted(info.items()))
+    info_bytes = str.encode(repr(sorted_info))
+    hasher = hashlib.sha1(info_bytes)
+    return hasher.hexdigest()
+
+
+
+# torrent = read_torrent_file('C:/Users/Minh Hieu/OneDrive/Desktop/MMT_A1/Assignment_1_MMT/main/testing/test2.torrent')
+# print (torrent.get_announce(), torrent.get_length(), torrent.get_name(), torrent.get_piece_length(), torrent.get_pieces())
+# ImAndCreate('C:/Users/Minh Hieu/OneDrive/Desktop/MMT_A1/Assignment_1_MMT/main/testing/test3.torrent')
+def create_Torrent_full():
+    despath = ""
+    filepath = []
+    folderpath = ""
+    while True: #find filepath,despath and folderpath
+        if despath and (filepath or folderpath):  
+            break
+        answer = input ("Choose your location (L)/ Choose your file (Fi)/ Choose your Folder(Fo) or Exit (E) \n")
+        if (answer.lower() == "l"):
+            despath = choose_directory()
+        elif (answer.lower() =='fi'):
+            filepath = import_file() 
+        elif (answer.lower() == 'fo'):
+            folderpath = choose_directory()
+        elif (answer.lower() == 'e '):
+            break
+        
+    despath = despath.replace('/', '\\')
+    if despath and filepath:
+        torrentname = input ("Enter the name of new torrent file: ")
+        full_path = os.path.join (despath, torrentname +   ".torrent")
+        open(full_path,'a').close()
+        create_torrent_file(filepath, full_path, 256)
+        print(f"Creating torrent file at {full_path}")
+    elif despath and folderpath:
+        torrentname = input ("Enter the name of new torrent file: ")
+        full_path = os.path.join (despath, torrentname +   ".torrent")
+        open(full_path,'a').close()
+        create_torrent_folder(folderpath, full_path, 256)
+        print(f"Creating torrent file at {full_path}")
+        return
     
-    info_str = json.dumps(info, sort_keys=True)
-    sha1 = hashlib.sha1()
-    sha1.update(info_str.encode())
-    return sha1.hexdigest()
-
-
-
+def verify_data_left(location, torrent):
+    
+    length = 0
+    if 'files' in torrent.get_info():
+        for file in torrent.get_info()['files']:
+            length += file[b'length']
+    else:
+        length = torrent.get_info()['length']
+        
+    files = os.listdir(location[0])
+    
+    for file in files:
+        path = os.path.join(location[0], file)
+        if 'files' in torrent.get_info(): #multiple files torrent
+            for file_info in torrent.get_info()['files']:
+                if file_info[b'path'][0].decode() == file:
+                    with open(path, 'rb') as f:
+                        data = f.read()
+                        length -= len(data)
+                    break
+        else: #single file torrent
+            if torrent.get_info()['name'] == file:
+                with open(path, 'rb') as f:
+                    data = f.read()
+                    length -= len(data)
+                break
+            
+    torrent.set_left(length)
+    return
