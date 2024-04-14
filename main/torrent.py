@@ -129,7 +129,7 @@ def create_torrent_file(file_path, des_path, piece_length):
 
     # chia file thanh tung manh 512 KB
     pieces = [file_data[i:i+piece_length] for i in range(0, len(file_data), piece_length)]
-    sha1_hashes = b''.join(hashlib.sha1(piece).digest() for piece in pieces)
+    sha1_hashes = [hashlib.sha1(piece).digest() for piece in pieces]
 
     torrent_info = {
         'length': os.path.getsize(file_path),
@@ -168,7 +168,8 @@ def create_torrent_folder(folder_path, des_path, piece_length):
             })
 
     pieces = [all_data[i:i+piece_length] for i in range(0, len(all_data), piece_length)]
-    sha1_hashes = b''.join(hashlib.sha1(piece).digest() for piece in pieces)
+    # sha1_hashes = b''.join(hashlib.sha1(piece).digest() for piece in pieces)
+    sha1_hashes = [hashlib.sha1(piece).digest() for piece in pieces]
     torrent_info['pieces'] = sha1_hashes
 
     torrent = {
@@ -232,32 +233,3 @@ def create_Torrent_full():
         print(f"Creating torrent file at {full_path}")
         return
     
-def verify_data_left(location, torrent):
-    
-    length = 0
-    if 'files' in torrent.get_info():
-        for file in torrent.get_info()['files']:
-            length += file[b'length']
-    else:
-        length = torrent.get_info()['length']
-        
-    files = os.listdir(location[0])
-    
-    for file in files:
-        path = os.path.join(location[0], file)
-        if 'files' in torrent.get_info(): #multiple files torrent
-            for file_info in torrent.get_info()['files']:
-                if file_info[b'path'][0].decode() == file:
-                    with open(path, 'rb') as f:
-                        data = f.read()
-                        length -= len(data)
-                    break
-        else: #single file torrent
-            if torrent.get_info()['name'] == file:
-                with open(path, 'rb') as f:
-                    data = f.read()
-                    length -= len(data)
-                break
-            
-    torrent.set_left(length)
-    return

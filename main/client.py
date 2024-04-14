@@ -6,6 +6,7 @@ import requests
 from flask import Flask, request, jsonify
 import json
 from threading import Thread
+from peer_func import *
 
 PORT = 9999
 TRACKER_PORT = 1234
@@ -65,7 +66,19 @@ def send_request_to_tracker(torrent, event):
 
 def start_flask_app():
     app.run(host='127.0.0.1', port=PORT)
+    
+    
+def send_interested(peer_host, info_hash):
+    intereseted_request = {'message': 'INTERESTED', 'info_hash': info_hash}
+    response = requests.post(peer_host, data=json.dumps(intereseted_request))
 
+    if response.status_code == 200:
+        bitfield_response = json.loads(response.text)
+        bitfield = bitfield_response.get('bitfield', '')
+        print ('Received bitfield:', bitfield)
+    else:
+        print ('Failed to send interested request.')
+        
 def ask_user_to_connect_to_peers(peers):
     answer = input("Do you want to connect to other peers? (Y/N) \n")
     if (answer.lower() == 'y'): #if they want to connect to other peers
@@ -81,6 +94,7 @@ def ask_user_to_connect_to_peers(peers):
             if response.status_code == 200:
                 print('Connect to peer', peer['peer_id'] , 'successfully.')
                 # Todo
+                send_interested(peer_host, params['info_hash'])
             else:
                 print('Failed to send request.')
     elif (answer.lower() == 'n'):
@@ -143,6 +157,20 @@ def handle_request():
             return 'Peer received message from Client', 200
 
     return 'Invalid info_hash or peer_id', 400
+
+
+@app.route ('/', methods = ['POST'])
+def handle_post_request():
+    request_data = json.loads(request.data)
+    if request_data['message'] == 'INTERESTED':
+        # Todo
+        for torrent in torrents:
+            if torrent.get_info_hash() == request_data['info_hash']:
+                bitfield = generate_bitfield(location, torrent)
+                response = {'bitfiled': bitfield}
+                return json.dumps(response),200
+    return 'Invalid request', 400
+
 
 
 if __name__ == '__main__':
