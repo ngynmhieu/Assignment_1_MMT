@@ -7,6 +7,7 @@ from tkinter import filedialog
 import json
 from tkinter.filedialog import askdirectory
 from tkinter import Tk
+import math
 # Kieu du lieu torrent
 
 class Torrent:
@@ -21,6 +22,9 @@ class Torrent:
         self.uploaded = 0
         self.left = self.length
         self.info_hash = ''
+        self.pieces_list = []
+        self.hash_pieces_list = []
+
     
     def get_announce(self):
         return self.announce
@@ -42,6 +46,10 @@ class Torrent:
         return self.left
     def get_info_hash(self):
         return self.info_hash
+    def get_pieces_list (self):
+        return self.pieces_list
+    def get_hash_pieces_list (self):
+        return self.hash_pieces_list
     def set_dowloaded(self, dowloaded):
         self.dowloaded = dowloaded
     def set_uploaded(self, uploaded):
@@ -50,6 +58,12 @@ class Torrent:
         self.left = left
     def set_info_hash (self, info_hash):
         self.info_hash = info_hash
+    def set_pieces_list (self, length, piece_length):
+        num = math.ceil(length/piece_length)
+        self.pieces_list = [None]*num
+    def set_hash_pieces_list (self, length, piece_length):
+        num = math.ceil(length/piece_length)
+        self.hash_pieces_list = [None]*num
 
     
 

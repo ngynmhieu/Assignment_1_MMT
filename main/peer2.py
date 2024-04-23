@@ -3,7 +3,8 @@ from torrent import *
 import socket
 import urllib.parse
 import requests
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_file
+from io import BytesIO
 import json
 from threading import Thread
 from peer_func import *
@@ -14,6 +15,7 @@ PEER_ID = 2
 
 # global var
 torrents=[] # List of torrents and info hash in this system
+dowload_requests = [] # List of download requests
 location = []
 app = Flask(__name__)
 
@@ -66,41 +68,6 @@ def send_request_to_tracker(torrent, event):
 
 def start_flask_app():
     app.run(host='127.0.0.1', port=PORT)
-    
-    
-def send_interested(peer_host, info_hash):
-    intereseted_request = {'message': 'INTERESTED', 'info_hash': info_hash}
-    response = requests.post(peer_host, data=json.dumps(intereseted_request))
-
-    if response.status_code == 200:
-        bitfield_response = json.loads(response.text)
-        bitfield = bitfield_response.get('bitfield', '')
-        print ('Received bitfield:', bitfield)
-    else:
-        print ('Failed to send interested request.')
-        
-def ask_user_to_connect_to_peers(peers):
-    answer = input("Do you want to connect to other peers? (Y/N) \n")
-    if (answer.lower() == 'y'): #if they want to connect to other peers
-        for peer in peers:
-            print('IP ', peer['ip'], ', Port: ', peer['port'])
-            params = {
-                'info_hash': peer['info_hash'],
-                'peer_id': peer['peer_id'],
-            }
-            peer_host = 'http://' + peer['ip'] + ':' + str(peer['port'])
-            response = requests.get(peer_host, params=params)
-            
-            if response.status_code == 200:
-                print('Connect to peer', peer['peer_id'] , 'successfully.')
-                # Todo
-                send_interested(peer_host, params['info_hash'])
-            else:
-                print('Failed to send request.')
-    elif (answer.lower() == 'n'):
-        # Todo
-        return
-
         
 def ask_user():
     
@@ -113,6 +80,7 @@ def ask_user():
             info_hash = torrent2hash(torrent.get_info())
             torrent.set_info_hash(info_hash)
             verify_data_left(location, torrent)
+            print (f'Pieces list {torrent.get_pieces_list()}')
             torrents.append((torrent)) #save torrent into torrents list
         elif (answer.lower() == 'r'):
             while True:
@@ -131,7 +99,10 @@ def ask_user():
                             needed_torrent = torrents[index - 1]
                             peers = send_request_to_tracker(needed_torrent, 'started')
                             if peers:
-                                ask_user_to_connect_to_peers(peers)
+                                peer_list = []
+                                ask_user_to_connect_to_peers(peer_list, peers, needed_torrent)# lay list cac peer 
+                                ask_user_to_send_download_request(peer_list, needed_torrent.get_pieces_list())
+                                ask_user_to_write_file(location, needed_torrent)
                             else:
                                 print ('No peers to connect to. Try again')
                                 break
@@ -166,12 +137,47 @@ def handle_post_request():
         # Todo
         for torrent in torrents:
             if torrent.get_info_hash() == request_data['info_hash']:
-                bitfield = generate_bitfield(location, torrent)
-                response = {'bitfiled': bitfield}
+                bitfield = generate_bitfield(location, torrent, torrent.get_pieces_list(), torrent.get_hash_pieces_list())
+                print ("Client ask interested and bitfield is: ", bitfield)
+                response = {'bitfield': bitfield}
                 return json.dumps(response),200
     return 'Invalid request', 400
 
+@app.route('/download', methods=['GET'])
+def handle_download_request():
+    info_hash = request.args.get('info_hash')
+    peer_id = request.args.get('peer_id')
+    piece_index = request.args.get('piece_index')
+    block_index = int(request.args.get('block_index'))
+    block_length = request.args.get('block_length')
 
+    #lay duoc piece giong voi piece index
+    needed_torrent = None
+    print (f'Info hash {info_hash}')
+    for torrent in torrents:
+        if torrent.get_info_hash() == info_hash:
+            needed_torrent = torrent
+            break
+    pieces_list = needed_torrent.get_pieces_list()
+    required_piece = pieces_list[int(piece_index)]
+    #lay duoc block giong voi block index
+    blocks = [required_piece[i:i+int(block_length)] for i in range(0, len(required_piece), int(block_length))]
+    print (f'Blocks number = {len(blocks)}')
+    if block_index >= len(blocks):
+        return 'Block index out of range', 401
+    required_block = blocks[int(block_index)]
+    if not isinstance(required_block, bytes):
+        required_block = bytes(required_block, 'utf-8')
+
+    # Create a BytesIO object from your data
+    data = BytesIO(required_block)
+    # Send data as a file
+    return send_file(data, mimetype='application/octet-stream')
+
+# @app.route('/printfullfile', methods=['POST'])
+# def handle_printfullfile_request():
+#     print (f'Print full file: {torrents[0].get_pieces_list()}')
+#     return 'Print full file', 200
 
 if __name__ == '__main__':
     #Thread listening 
