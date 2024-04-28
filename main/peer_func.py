@@ -13,6 +13,7 @@ import queue
 import time
 
 stop_contact_to_tracker = False
+
 thread_contact_list = []
 
 class Peer:
@@ -22,6 +23,7 @@ class Peer:
         self.peer_id = peer_id
         self.torrent = torrent
         self.bitfield = bitfield
+
     def get_ip(self):
         return self.ip
     def get_port(self):
@@ -199,7 +201,11 @@ def calculate_piece_count(peer_list):
 def download_block(peer, piece_index, block_length, block_queue, blocks_list):
     while not block_queue.empty():
         # Get a block index from the queue
-        block_index = block_queue.get(block=True, timeout=1)
+        time.sleep(0.5)
+        try:
+            block_index = block_queue.get(block=True, timeout=1)
+        except queue.Empty:
+            break
         try:
             params ={
                 'info_hash': peer.get_torrent().get_info_hash(),
@@ -211,7 +217,8 @@ def download_block(peer, piece_index, block_length, block_queue, blocks_list):
             peer_host = 'http://' + peer.get_ip() + ':' + str(peer.get_port()) + '/download'
             print (f'Sending {block_index + 1}/{piece_index + 1} to peer {peer.get_peer_id()}')
             response = requests.get(peer_host, params=params) #send request and receive bianary data
-            if response == 401:
+            if response.status_code == 401:
+                print (f'Block is out of index')
                 while not block_queue.empty():
                     try:
                         block_queue.get_nowait()
@@ -222,11 +229,12 @@ def download_block(peer, piece_index, block_length, block_queue, blocks_list):
             
             binary_data = response.content
             blocks_list[block_index] = binary_data
-            block_queue.task_done()
-            print (f'\n Downloaded block {block_index + 1}/ piece {piece_index + 1} from peer {peer.get_peer_id()} successfully.')
+            print (f'Downloaded block {block_index + 1}/ piece {piece_index + 1} from peer {peer.get_peer_id()} successfully. \n')
         except Exception as e:
             print(f'Error downloading block {block_index} from peer {peer}: {e}')
             block_queue.put(block_index)
+        finally:
+            block_queue.task_done()
     print ('\nThread finished')
     
 def send_interested(peer_host, info_hash):
@@ -299,6 +307,10 @@ def ask_user_to_send_download_request(peer_list, pieces_list):
         
         sorted_pieces = sorted(piece_count.items(), key=operator.itemgetter(1))
         rarest_piece = sorted_pieces[0][0]
+        if rarest_piece in pieces_list:
+            piece_count.pop(rarest_piece)
+            continue
+        
         peers_with_piece = [peer for peer in peer_list if peer.get_bitfield()[rarest_piece] == '1']
         
         piece_length = peers_with_piece[0].get_torrent().get_piece_length()
@@ -309,21 +321,28 @@ def ask_user_to_send_download_request(peer_list, pieces_list):
         for block_index in range(num_blocks):
             block_queue.put(block_index)  # tao hang doi cho cac block
         
-        print (f'\nNumber of blocks: {num_blocks}')
-        print (f'\nNumber of elements in block queue: {block_queue.qsize()}')
         
         
         blocks_list = [None]*num_blocks # Create a list of blocks list to store downdloaded blocks from peers
+        downloading_thread = []
         for index, peer in enumerate(peers_with_piece):
-            print (f'{index}. Downloading from peer {peer.get_peer_id()} ...')
+            # Create up to 5 threads for each peer
+            print (f'{index}. Downloading from peer {peer.get_peer_id()} ... \n')
             thread = threading.Thread(target=download_block, args=(peer, rarest_piece, block_length, block_queue, blocks_list))
             thread.start()
-                    
+            downloading_thread.append(thread)
+
+        #Ending all threads 
         block_queue.join()
-        
+        for thread in downloading_thread:
+            thread.join()
+            print (f'Thread {thread} finished')
+        blocks_list = [block if block is not None else b'' for block in blocks_list]
         complete_piece = b''.join(blocks_list)
         pieces_list[rarest_piece] = complete_piece
         piece_count.pop(rarest_piece)
+        
+    
 
     print (f'\nDownloaded all pieces successfully.')
     # peer_host = 'http://' + peer_list[1].get_ip() + ':' + str(peer_list[1].get_port()) + '/printfullfile'
