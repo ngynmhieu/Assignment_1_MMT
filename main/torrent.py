@@ -18,7 +18,7 @@ class Torrent:
         self.name = info.get('name')
         self.piece_length = info.get('piece length')
         self.pieces = info.get ('pieces')
-        self.dowloaded = 0
+        self.downloaded = 0
         self.uploaded = 0
         self.left = self.length
         self.info_hash = ''
@@ -38,8 +38,8 @@ class Torrent:
         return self.pieces
     def get_info(self):
         return self.info
-    def get_dowloaded (self):
-        return self.dowloaded
+    def get_downloaded (self):
+        return self.downloaded
     def get_uploaded (self):
         return self.uploaded
     def get_left (self):
@@ -50,8 +50,8 @@ class Torrent:
         return self.pieces_list
     def get_hash_pieces_list (self):
         return self.hash_pieces_list
-    def set_dowloaded(self, dowloaded):
-        self.dowloaded = dowloaded
+    def set_downloaded(self, downloaded):
+        self.downloaded = downloaded
     def set_uploaded(self, uploaded):
         self.uploaded = uploaded
     def set_left(self, left):

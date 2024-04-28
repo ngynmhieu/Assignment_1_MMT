@@ -11,6 +11,10 @@ import math
 import threading
 import queue
 import time
+
+stop_contact_to_tracker = False
+thread_contact_list = []
+
 class Peer:
     def __init__(self, ip, port, peer_id, torrent, bitfield):
         self.ip = ip
@@ -31,18 +35,78 @@ class Peer:
     def set_bitfield(self, bitfield):
         self.bitfield = bitfield
         
-def send_interested(peer_host, info_hash):
-    intereseted_request = {'message': 'INTERESTED', 'info_hash': info_hash}
-    response = requests.post(peer_host, data=json.dumps(intereseted_request))
 
+        
+def keep_contact_with_tracker(torrent, port_sys, tracker_port_sys, peer_id_sys):
+    global stop_contact_to_tracker
+    while not stop_contact_to_tracker: #Khi chua co tin hieu dung thread contact thi dinh ky 1 phut se ket noi mot lan
+        tracker_host = torrent.get_announce()
+        tracker_port = tracker_port_sys
+        port = port_sys
+        peer_id = peer_id_sys
+        left = torrent.get_left()
+        info_hash = torrent.get_info_hash()
+        uploaded = torrent.get_uploaded()
+        downloaded = torrent.get_downloaded()
+        params = {
+            'info_hash': info_hash,
+            'peer_id': peer_id,
+            'port': port,
+            'uploaded': uploaded,
+            'downloaded': downloaded,
+            'left': left,
+            'event': "started"
+        }
+        tracker_host = 'http://' + tracker_host + ':' + str(tracker_port)
+        response = requests.get(tracker_host, params=params)
+        
+        time.sleep(60) #sleep 1 minute
+
+def send_request_to_tracker(torrent, event, port_sys, tracker_port_sys, peer_id_sys):
+    tracker_host = torrent.get_announce()
+    tracker_port = tracker_port_sys
+    port = port_sys
+    peer_id = peer_id_sys
+    left = torrent.get_left()
+    info_hash = torrent.get_info_hash()
+    uploaded = torrent.get_uploaded()
+    downloaded = torrent.get_downloaded()
+    
+    
+    params = {
+        'info_hash': info_hash,
+        'peer_id': peer_id,
+        'port': port,
+        'uploaded': uploaded,
+        'downloaded': downloaded,
+        'left': left,
+        'event': event
+    }
+    tracker_host = 'http://' + tracker_host + ':' + str(tracker_port)
+    response = requests.get(tracker_host, params=params)
+    
     if response.status_code == 200:
-        bitfield_response = json.loads(response.text)
-        bitfield = bitfield_response.get('bitfield', '')
-        print ('Received bitfield:', bitfield)
-        return bitfield
+        print('Request sent to tracker successfully.')
+        try:
+            response_json = json.loads(response.text)
+            failure_reason = response_json['failure_reason']
+            tracker_id = response_json['tracker_id']
+            peers_list = response_json['ready_peers_list']
+            print('Received list of peers:', peers_list)
+            thread = threading.Thread(target=keep_contact_with_tracker, args=(torrent, port_sys, tracker_port_sys, peer_id_sys))
+            thread.start()
+            thread_contact_list.append(thread)
+            
+            return peers_list
+        except json.JSONDecodeError:
+            print('No json file needed to return')
+            thread = threading.Thread(target=keep_contact_with_tracker, args=(torrent, port_sys, tracker_port_sys, peer_id_sys))
+            thread.start()
+            thread_contact_list.append(thread)
+            return
     else:
-        print ('Failed to send interested request.')
-
+        print('Failed to send request.')
+        
 def verify_data_left(location, torrent):
     
     length = 0
@@ -128,7 +192,6 @@ def calculate_piece_count(peer_list):
                     piece_counts[index] = 1
     return piece_counts 
 
-
 def download_block(peer, piece_index, block_length, block_queue, blocks_list):
     while True:
         try:
@@ -165,15 +228,28 @@ def download_block(peer, piece_index, block_length, block_queue, blocks_list):
             break  # No more blocks to download
     print ('\nThread finished')
     
-        
+def send_interested(peer_host, info_hash):
+    intereseted_request = {'message': 'INTERESTED', 'info_hash': info_hash}
+    response = requests.post(peer_host, data=json.dumps(intereseted_request))
+
+    if response.status_code == 200:
+        bitfield_response = json.loads(response.text)
+        bitfield = bitfield_response.get('bitfield', '')
+        print ('Received bitfield:', bitfield)
+        return bitfield
+    else:
+        print ('Failed to send interested request.')
+
+
+
 def ask_user_to_connect_to_peers(peer_list, peers, needed_torrent):
     answer = input("Do you want to connect to other peers? (Y/N) \n")
     if (answer.lower() == 'y'): #if they want to connect to other peers
         for peer in peers:
             print('IP ', peer['ip'], ', Port: ', peer['port'])
             params = {
-                'info_hash': peer['info_hash'],
-                'peer_id': peer['peer_id'],
+                'info_hash': needed_torrent.get_info_hash(),
+                'peer_id': peer['peer_id']
             }
             peer_host = 'http://' + peer['ip'] + ':' + str(peer['port'])
             response = requests.get(peer_host, params=params)
@@ -213,7 +289,7 @@ def ask_user_to_send_download_request(peer_list, pieces_list):
         
         blocks_list = [None]*num_blocks # Create a list of blocks list to store downdloaded blocks from peers
         for index, peer in enumerate(peers_with_piece):
-            print (f'{index}. Dowloading from peer {peer.get_peer_id()} ...')
+            print (f'{index}. Downloading from peer {peer.get_peer_id()} ...')
             thread = threading.Thread(target=download_block, args=(peer, rarest_piece, block_length, block_queue, blocks_list))
             thread.start()
                     
@@ -259,9 +335,110 @@ def ask_user_to_write_file (location, torrent):
         else:
             print (f'File {file_path} already exists.')
             
-    print ('\nWrite file successfully.')
+def ask_user_to_send_completed_request(port_sys, tracker_port_sys, peer_id_sys, location, torrent):
+    print ('\nSending completed request ...')
+    verify_data_left(location, torrent)
+    
+    tracker_host = torrent.get_announce()
+    tracker_port = tracker_port_sys
+    port = port_sys
+    peer_id = peer_id_sys
+    left = torrent.get_left()
+    info_hash = torrent.get_info_hash()
+    uploaded = torrent.get_uploaded()
+    downloaded = torrent.get_downloaded()
+    
+    
+    params = {
+        'info_hash': info_hash,
+        'peer_id': peer_id,
+        'port': port,
+        'uploaded': uploaded,
+        'downloaded': downloaded,
+        'left': left,
+        'event': "completed"
+    }
+    
+    tracker_host = 'http://' + tracker_host + ':' + str(tracker_port)
+    response = requests.get(tracker_host, params=params)
+    
+    if response.status_code == 200:
+        print('Downloaded successfully. Request sent to tracker.')
+        return
+    else:
+        print('Failed to send completed request.')
+
+def ask_user_to_choose_location(location):
+    root = Tk()
+    root.after(0, lambda: open_directory(root, location))
+    root.mainloop()
+    if location:  # Check if the list is not empty
+        return location
+    else:
+        print("No directory selected.")
+        return None
 
 
+
+
+
+ 
+def ask_user(port_sys, tracker_port_sys, peer_id_sys, location, torrent_list):
+    global stop_contact_to_tracker
+    while True:
+        print ('\n -------------------------------------------- \n')
+        answer = input("Which action do you want: Import(I)/ Run(R) or Stop(S)\n")
+        if (answer.lower() == 'i'):
+            filepath = import_file()
+            torrent = read_torrent_file(filepath)
+            info_hash = torrent2hash(torrent.get_info())
+            torrent.set_info_hash(info_hash)
+            verify_data_left(location, torrent) 
+            torrent_list.append((torrent)) #save torrent into torrents list
+        elif (answer.lower() == 'r'):
+            while True:
+                if torrent_list: 
+                    count = 1
+                    for torrent in torrent_list:
+                        print('Torrent', count, torrent.get_name())
+                        count += 1
+                    answer = input("Which torrent file you want to run or Exit (e) ?\n")
+                    if answer.isdigit():
+                        index = int (answer)
+                        if (index < 1 or index > count):
+                            print ('Wrong input, please try again')
+                            continue
+                        else:  
+                            needed_torrent = torrent_list[index - 1]
+                            peers = send_request_to_tracker(needed_torrent, 'started', port_sys, tracker_port_sys, peer_id_sys)
+                            if peers:
+                                peer_ready_to_download = []
+                                # lay list cac peer va bitfield cua cac peer
+                                ask_user_to_connect_to_peers(peer_ready_to_download, peers, needed_torrent)
+                                #tu cac bitfiel cua cac peer, tinh ra duoc cac piece can download->tao list cac peer co piece nay va tao tung thread de gui yeu cau download toi
+                                print ('Peer ready to download:', peer_ready_to_download)
+                                ask_user_to_send_download_request(peer_ready_to_download, needed_torrent.get_pieces_list()) 
+                                #sau khi pieces_list cua file torrent da du thi thuc hien viec ghi lai file
+                                ask_user_to_write_file(location, needed_torrent)
+                                #xu ly cac van de sau khi hoan thanh viec tai
+                                ask_user_to_send_completed_request(port_sys, tracker_port_sys, peer_id_sys, location, needed_torrent)
+                            else:
+                                print ('No peers to connect to. Try again')
+                                break
+                    elif (answer.lower() == 'e'):
+                        break
+                    
+                else: # No torrent file in the system
+                    print ('No torrents in the system')
+                    break
+        elif (answer.lower() == 's'):
+            print ("Stopping ... ")
+            
+            stop_contact_to_tracker = True
+            for index, thread in enumerate(thread_contact_list):
+                print (f'Stopping thread {index} ...')
+                thread.join()
+            sys.exit(0)
 
     
     
