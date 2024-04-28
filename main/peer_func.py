@@ -197,39 +197,36 @@ def calculate_piece_count(peer_list):
     return piece_counts 
 
 def download_block(peer, piece_index, block_length, block_queue, blocks_list):
-    while True:
+    while not block_queue.empty():
+        # Get a block index from the queue
+        block_index = block_queue.get(block=True, timeout=1)
         try:
-            # Get a block index from the queue
-            block_index = block_queue.get(block=True, timeout=1)
-            try:
-                params ={
-                    'info_hash': peer.get_torrent().get_info_hash(),
-                    'peer_id': peer.get_peer_id(),
-                    'piece_index': piece_index,
-                    'block_index': block_index,
-                    'block_length': block_length,
-                }
-                peer_host = 'http://' + peer.get_ip() + ':' + str(peer.get_port()) + '/download'
-                print (f'Sending {block_index + 1}/{piece_index + 1} to peer {peer.get_peer_id()}')
-                response = requests.get(peer_host, params=params) #send request and receive bianary data
-                if response == 401:
-                    while not block_queue.empty():
-                        try:
-                            block_queue.get_nowait()
-                        except queue.Empty:
-                            continue
-                        block_queue.task_done()
-                    break
-                
-                binary_data = response.content
-                blocks_list[block_index] = binary_data
-                block_queue.task_done()
-                print (f'\n Downloaded block {block_index + 1}/ piece {piece_index + 1} from peer {peer.get_peer_id()} successfully.')
-            except Exception as e:
-                print(f'Error downloading block {block_index} from peer {peer}: {e}')
-                block_queue.put(block_index)
-        except queue.Empty:
-            break  # No more blocks to download
+            params ={
+                'info_hash': peer.get_torrent().get_info_hash(),
+                'peer_id': peer.get_peer_id(),
+                'piece_index': piece_index,
+                'block_index': block_index,
+                'block_length': block_length,
+            }
+            peer_host = 'http://' + peer.get_ip() + ':' + str(peer.get_port()) + '/download'
+            print (f'Sending {block_index + 1}/{piece_index + 1} to peer {peer.get_peer_id()}')
+            response = requests.get(peer_host, params=params) #send request and receive bianary data
+            if response == 401:
+                while not block_queue.empty():
+                    try:
+                        block_queue.get_nowait()
+                    except queue.Empty:
+                        continue
+                    block_queue.task_done()
+                break
+            
+            binary_data = response.content
+            blocks_list[block_index] = binary_data
+            block_queue.task_done()
+            print (f'\n Downloaded block {block_index + 1}/ piece {piece_index + 1} from peer {peer.get_peer_id()} successfully.')
+        except Exception as e:
+            print(f'Error downloading block {block_index} from peer {peer}: {e}')
+            block_queue.put(block_index)
     print ('\nThread finished')
     
 def send_interested(peer_host, info_hash):
@@ -243,6 +240,31 @@ def send_interested(peer_host, info_hash):
         return bitfield
     else:
         print ('Failed to send interested request.')
+
+def send_stop_request_to_tracker(port_sys, tracker_port_sys, peer_id_sys, tracker_list):
+    print ('Sending stop request to tracker ...')
+    for torrent in tracker_list:
+        tracker_host = torrent.get_announce()
+        tracker_port = tracker_port_sys
+        port = port_sys
+        peer_id = peer_id_sys
+        left = torrent.get_left()
+        info_hash = torrent.get_info_hash()
+        uploaded = torrent.get_uploaded()
+        downloaded = torrent.get_downloaded()
+        
+        
+        params = {
+            'info_hash': info_hash,
+            'peer_id': peer_id,
+            'port': port,
+            'uploaded': uploaded,
+            'downloaded': downloaded,
+            'left': left,
+            'event': "stopped"
+        }
+        tracker_host = 'http://' + tracker_host + ':' + str(tracker_port)
+        response = requests.get(tracker_host, params=params)
 
 
 
@@ -427,7 +449,7 @@ def ask_user(port_sys, tracker_port_sys, peer_id_sys, location, torrent_list):
                                 #xu ly cac van de sau khi hoan thanh viec tai
                                 ask_user_to_send_completed_request(port_sys, tracker_port_sys, peer_id_sys, location, needed_torrent)
                             else:
-                                print ('No peers to connect to. Try again')
+                                
                                 break
                     elif (answer.lower() == 'e'):
                         break
@@ -437,12 +459,12 @@ def ask_user(port_sys, tracker_port_sys, peer_id_sys, location, torrent_list):
                     break
         elif (answer.lower() == 's'):
             print ("Stopping ... ")
-            
+            send_stop_request_to_tracker(port_sys, tracker_port_sys, peer_id_sys, torrent_list)
             stop_contact_to_tracker = True
             for index, thread in enumerate(thread_contact_list):
-                print (f'Stopping thread {index} ...')
+                print (f'Stopping thread contact to tracker {index} ...')
                 thread.join()
-            sys.exit(0)
+            
 
     
     
