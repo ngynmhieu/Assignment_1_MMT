@@ -74,6 +74,8 @@ def check_peer_status():
 @app.route('/', methods=['GET'])
 def handle_request():
     # Lấy thông tin từ yêu cầu
+    peers_dict = []
+    
     info_hash = request.args.get('info_hash')
     peer_id = request.args.get('peer_id')
     port = request.args.get('port')
@@ -82,8 +84,16 @@ def handle_request():
     left = request.args.get('left')
     event = request.args.get('event')
     
-
-
+    #Check whether sender give enough information
+    if not all([info_hash, peer_id, port, uploaded, downloaded, left, event]):  
+        response = {
+            'failure_reason': 'Not enough information',
+            'tracker_id': '1234',
+            'ready_peers_list': peers_dict
+        }
+        return response, 400
+    
+    
     peer_info = {
         'ip': request.remote_addr,
         'info_hash': info_hash,
@@ -97,18 +107,24 @@ def handle_request():
     temp_peer = Peer_in_track(peer_info['ip'], peer_info['info_hash'], peer_info['peer_id'], 
                               peer_info['port'], peer_info['uploaded'], peer_info['downloaded'], 
                               peer_info['left'], peer_info['event'])
+
+                              
     if event not in ['started', 'stopped', 'completed']:
-        return 'Invalid event', 400
+        response = {
+            'failure_reason': 'Invalid event',
+            'tracker_id': '1234',
+            'ready_peers_list': peers_dict
+        }
+        return response, 400
     
     
     handle_request_event(temp_peer)
 
     print (swarm)
     print ('\n --------------------------------- \n')
+    
     if int(left) > 0:
-        peers_dict = []
-        for peer in swarm:
-            
+        for peer in swarm: 
             if int (peer.get_left()) == 0 and peer.get_info_hash() == info_hash:
                 peers_dict.append({
                     'peer_id': peer.get_peer_id(),
@@ -116,15 +132,13 @@ def handle_request():
                     'port': peer.get_port()
                 })
             
-        response = {
-            'failure_reason': 'No failure reason',
-            'tracker_id': '1234',
-            'ready_peers_list': peers_dict
-            
-        }
-        return response, 200
 
-    return 'Peer added to swarm successfully.', 200
+    response = {
+        'failure_reason': 'No failure reason',
+        'tracker_id': '1234',
+        'ready_peers_list': peers_dict
+    }
+    return response, 200
 
 if __name__ == '__main__':
     
