@@ -86,7 +86,7 @@ def send_request_to_tracker(torrent, event, port_sys, tracker_port_sys, peer_id_
     response = requests.get(tracker_host, params=params)
     
     if response.status_code == 200:
-        print('Request sent to tracker successfully.')
+        print('Request sent to tracker successfully.') # truong hop left > 0
         try:
             response_json = json.loads(response.text)
             failure_reason = response_json['failure_reason']
@@ -96,17 +96,21 @@ def send_request_to_tracker(torrent, event, port_sys, tracker_port_sys, peer_id_
             thread = threading.Thread(target=keep_contact_with_tracker, args=(torrent, port_sys, tracker_port_sys, peer_id_sys))
             thread.start()
             thread_contact_list.append(thread)
-            
             return peers_list
-        except json.JSONDecodeError:
-            print('No json file needed to return')
+        except json.JSONDecodeError: # truong hop left = 0
             thread = threading.Thread(target=keep_contact_with_tracker, args=(torrent, port_sys, tracker_port_sys, peer_id_sys))
             thread.start()
             thread_contact_list.append(thread)
             return
+    elif response.status_code == 400:
+        data = json.loads(response.text)
+        print (data['failure_reason'])
     else:
-        print('Failed to send request.')
-        
+        print('Failed to send request to tracker.')
+        return 
+    
+    
+    
 def verify_data_left(location, torrent):
     
     length = 0
