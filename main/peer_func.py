@@ -48,14 +48,12 @@ def keep_contact_with_tracker(torrent, port_sys, tracker_port_sys, peer_id_sys):
         peer_id = peer_id_sys
         left = torrent.get_left()
         info_hash = torrent.get_info_hash()
-        uploaded = torrent.get_uploaded()
-        downloaded = torrent.get_downloaded()
+
         params = {
             'info_hash': info_hash,
             'peer_id': peer_id,
             'port': port,
-            'uploaded': uploaded,
-            'downloaded': downloaded,
+
             'left': left,
             'event': "started"
         }
@@ -71,16 +69,13 @@ def send_request_to_tracker(torrent, event, port_sys, tracker_port_sys, peer_id_
     peer_id = peer_id_sys
     left = torrent.get_left()
     info_hash = torrent.get_info_hash()
-    uploaded = torrent.get_uploaded()
-    downloaded = torrent.get_downloaded()
+
     
     
     params = {
         'info_hash': info_hash,
         'peer_id': peer_id,
         'port': port,
-        'uploaded': uploaded,
-        'downloaded': downloaded,
         'left': left,
         'event': event
     }
@@ -258,16 +253,13 @@ def send_stop_request_to_tracker(port_sys, tracker_port_sys, peer_id_sys, tracke
         peer_id = peer_id_sys
         left = torrent.get_left()
         info_hash = torrent.get_info_hash()
-        uploaded = torrent.get_uploaded()
-        downloaded = torrent.get_downloaded()
+
         
         
         params = {
             'info_hash': info_hash,
             'peer_id': peer_id,
             'port': port,
-            'uploaded': uploaded,
-            'downloaded': downloaded,
             'left': left,
             'event': "stopped"
         }
@@ -390,16 +382,14 @@ def ask_user_to_send_completed_request(port_sys, tracker_port_sys, peer_id_sys, 
     peer_id = peer_id_sys
     left = torrent.get_left()
     info_hash = torrent.get_info_hash()
-    uploaded = torrent.get_uploaded()
-    downloaded = torrent.get_downloaded()
+
     
     
     params = {
         'info_hash': info_hash,
         'peer_id': peer_id,
         'port': port,
-        'uploaded': uploaded,
-        'downloaded': downloaded,
+        
         'left': left,
         'event': "completed"
     }

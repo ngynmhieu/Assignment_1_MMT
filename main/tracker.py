@@ -5,13 +5,12 @@ from flask import Flask, request, jsonify
 app = Flask(__name__)
 
 class Peer_in_track:
-    def __init__(self, ip, info_hash, peer_id, port, uploaded, downloaded, left, event):
+    def __init__(self, ip, info_hash, peer_id, port,  left, event):
         self.ip = ip
         self.info_hash = info_hash
         self.peer_id = peer_id
         self.port = port
-        self.uploaded = uploaded
-        self.downloaded = downloaded
+
         self.left = left
         self.event = event
         self.last_contact = time.time()
@@ -24,10 +23,7 @@ class Peer_in_track:
         return self.peer_id
     def get_port(self):
         return self.port
-    def get_uploaded(self):
-        return self.uploaded
-    def get_downloaded(self):
-        return self.downloaded
+
     def get_left(self):
         return self.left
     def get_event(self):
@@ -37,8 +33,7 @@ class Peer_in_track:
     def update_last_contact(self):
         self.last_contact = time.time() #in ra thoi gian bay gio - ngay 1/1/1970 ?? ra so giay
     def update (self, new_peer):
-        self.uploaded = new_peer.get_uploaded()
-        self.downloaded = new_peer.get_downloaded()
+
         self.left = new_peer.get_left()
         self.event = new_peer.get_event()
         self.last_contact = time.time()
@@ -72,20 +67,18 @@ def check_peer_status():
 
 
 @app.route('/', methods=['GET'])
-def handle_request():
+def handle_peer_request():
     # Lấy thông tin từ yêu cầu
     peers_dict = []
     
     info_hash = request.args.get('info_hash')
     peer_id = request.args.get('peer_id')
     port = request.args.get('port')
-    uploaded = request.args.get('uploaded')
-    downloaded = request.args.get('downloaded')
     left = request.args.get('left')
     event = request.args.get('event')
     
     #Check whether sender give enough information
-    if not all([info_hash, peer_id, port, uploaded, downloaded, left, event]):  
+    if not all([info_hash, peer_id, port, left, event]):  
         response = {
             'failure_reason': 'Not enough information',
             'tracker_id': '1234',
@@ -99,14 +92,11 @@ def handle_request():
         'info_hash': info_hash,
         'peer_id': peer_id,
         'port': port,
-        'uploaded': uploaded,
-        'downloaded': downloaded,
         'left': left,
         'event': event
     }
     temp_peer = Peer_in_track(peer_info['ip'], peer_info['info_hash'], peer_info['peer_id'], 
-                              peer_info['port'], peer_info['uploaded'], peer_info['downloaded'], 
-                              peer_info['left'], peer_info['event'])
+                              peer_info['port'], peer_info['left'], peer_info['event'])
 
                               
     if event not in ['started', 'stopped', 'completed']:

@@ -24,7 +24,7 @@ def start_flask_app():
     app.run(host='127.0.0.1', port=PORT)
     
 @app.route('/', methods=['GET'])
-def handle_request():
+def handle_client_request():
     # Lấy thông tin từ yêu cầu
     info_hash = request.args.get('info_hash')
     peer_id = request.args.get('peer_id')
@@ -37,7 +37,7 @@ def handle_request():
     return 'Invalid info_hash or peer_id', 400
 
 @app.route ('/', methods = ['POST'])
-def handle_post_request():
+def handle_interestd_request():
     request_data = json.loads(request.data)
     if request_data['message'] == 'INTERESTED':
         # Todo
