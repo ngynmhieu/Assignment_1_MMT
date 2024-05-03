@@ -115,7 +115,7 @@ def handle_peer_request():
     
     if int(left) > 0:
         for peer in swarm: 
-            if int (peer.get_left()) == 0 and peer.get_info_hash() == info_hash:
+            if int (int(peer.get_left())) >= 0 and int(peer.get_left()) < int(left) and peer.get_info_hash() == info_hash and peer.get_peer_id() != peer_id:
                 peers_dict.append({
                     'peer_id': peer.get_peer_id(),
                     'ip': peer.get_ip(),

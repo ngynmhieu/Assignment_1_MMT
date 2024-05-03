@@ -161,6 +161,7 @@ def split_pieces_and_hash(location, torrent, pieces_list, hash_pieces_list):
                     all_data += data
                 break
     pieces = [all_data[i:i+torrent.get_piece_length()] for i in range(0, len(all_data), torrent.get_piece_length())]
+   
     pieces_list.clear()
     pieces_list.extend(pieces)
     sha1_hashes = [hashlib.sha1(piece).digest() for piece in pieces]
@@ -172,8 +173,10 @@ def generate_bitfield(location, torrent, pieces_list, hash_pieces_list):
     bitfield = ''
     hash_pieces = split_pieces_and_hash(location, torrent, pieces_list, hash_pieces_list)
     # print (hash_pieces, '\n')
-    for torrent_piece, hash_piece in zip(torrent.get_pieces(), hash_pieces):
-        if torrent_piece == hash_piece:
+    print (f'Hash pieces: {hash_pieces}')
+    print (f'pieces: {torrent.get_pieces()}')
+    for torrent_piece in torrent.get_pieces():
+        if torrent_piece in hash_pieces:
             bitfield += '1'
         else:
             bitfield += '0'
@@ -196,7 +199,7 @@ def calculate_piece_count(peer_list):
 def download_block(peer, piece_index, block_length, block_queue, blocks_list):
     while not block_queue.empty():
         # Get a block index from the queue
-        time.sleep(0.5)
+        
         try:
             block_index = block_queue.get(block=True, timeout=1)
         except queue.Empty:

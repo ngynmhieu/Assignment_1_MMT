@@ -194,6 +194,7 @@ def create_torrent_folder(folder_path, des_path, piece_length):
             })
 
     pieces = [all_data[i:i+piece_length] for i in range(0, len(all_data), piece_length)]
+    print (f'Pieces list: {pieces}')
     # sha1_hashes = b''.join(hashlib.sha1(piece).digest() for piece in pieces)
     sha1_hashes = [hashlib.sha1(piece).digest() for piece in pieces]
     torrent_info['pieces'] = sha1_hashes
