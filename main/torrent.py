@@ -206,3 +206,5 @@ def create_torrent_folder(folder_path, des_path, piece_length):
     torrent_bencoded = bencodepy.encode(torrent)
     with open(des_path, 'wb') as f:
         f.write(torrent_bencoded)
+        
+        

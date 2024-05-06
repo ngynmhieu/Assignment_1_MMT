@@ -11,6 +11,7 @@ import math
 import threading
 import queue
 import time
+import socket
 
 stop_contact_to_tracker = False
 
@@ -173,8 +174,6 @@ def generate_bitfield(location, torrent, pieces_list, hash_pieces_list):
     bitfield = ''
     hash_pieces = split_pieces_and_hash(location, torrent, pieces_list, hash_pieces_list)
     # print (hash_pieces, '\n')
-    print (f'Hash pieces: {hash_pieces}')
-    print (f'pieces: {torrent.get_pieces()}')
     for torrent_piece in torrent.get_pieces():
         if torrent_piece in hash_pieces:
             bitfield += '1'
@@ -199,39 +198,52 @@ def calculate_piece_count(peer_list):
 def download_block(peer, piece_index, block_length, block_queue, blocks_list):
     while not block_queue.empty():
         # Get a block index from the queue
-        
+        time.sleep(0.02)
         try:
             block_index = block_queue.get(block=True, timeout=1)
         except queue.Empty:
             break
         try:
-            params ={
-                'info_hash': peer.get_torrent().get_info_hash(),
-                'peer_id': peer.get_peer_id(),
-                'piece_index': piece_index,
-                'block_index': block_index,
-                'block_length': block_length,
-            }
-            peer_host = 'http://' + peer.get_ip() + ':' + str(peer.get_port()) + '/download'
-            print (f'Sending {block_index + 1}/{piece_index + 1} to peer {peer.get_peer_id()}')
-            response = requests.get(peer_host, params=params) #send request and receive bianary data
-            if response.status_code == 401:
-                print (f'Block is out of index')
-                while not block_queue.empty():
-                    try:
-                        block_queue.get_nowait()
-                    except queue.Empty:
-                        continue
-                    block_queue.task_done()
-                break
+            client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            client_socket.connect((peer.get_ip(), int (peer.get_port()) + 1))
             
-            binary_data = response.content
-            blocks_list[block_index] = binary_data
-            print (f'Downloaded block {block_index + 1}/ piece {piece_index + 1} from peer {peer.get_peer_id()} successfully. \n')
+            info_hash= peer.get_torrent().get_info_hash()
+            peer_id= peer.get_peer_id()
+            piece_index= piece_index
+            block_index= block_index
+            block_length= block_length
+            
+            # peer_host = 'http://' + peer.get_ip() + ':' + str(peer.get_port()) + '/download'
+            print (f'Sending Block {block_index + 1}/ Piece {piece_index + 1} to peer {peer.get_peer_id()}')
+            request = f'{info_hash},{peer_id},{piece_index},{block_index},{block_length}'
+            
+            client_socket.send (request.encode('utf-8'))
+            data = client_socket.recv(block_length)
+            try:
+                decoded_data = data.decode('utf-8')
+                if data.decode('utf-8') == 'Block index out of range':
+                    print (f'Block is out of index')
+                    while not block_queue.empty():
+                        try:
+                            block_queue.get_nowait()
+                        except queue.Empty:
+                            continue
+                        block_queue.task_done()
+                    break
+                elif data.decode ('utf-8').startswith('Error occurred: '):
+                    print(f'Error downloading block {block_index} from peer {peer}: {e}')
+                    block_queue.put(block_index)
+            except UnicodeDecodeError:
+                blocks_list[block_index] = data
+                print (f'Downloaded block {block_index + 1}/ piece {piece_index + 1} from peer {peer.get_peer_id()} successfully. \n')
+
+
+            
         except Exception as e:
-            print(f'Error downloading block {block_index} from peer {peer}: {e}')
+            print(f"Error occurred: {e}")
             block_queue.put(block_index)
         finally:
+            client_socket.close()
             block_queue.task_done()
     print ('\nThread finished')
     
@@ -298,8 +310,8 @@ def ask_user_to_connect_to_peers(peer_list, peers, needed_torrent):
 def ask_user_to_send_download_request(peer_list, pieces_list):
     print ("Starting download ...")
     piece_count = calculate_piece_count(peer_list)
+    print (f'Piece count: {piece_count}')
     while piece_count:
-        
         sorted_pieces = sorted(piece_count.items(), key=operator.itemgetter(1))
         rarest_piece = sorted_pieces[0][0]
         if rarest_piece in pieces_list:
@@ -357,11 +369,12 @@ def ask_user_to_write_file (location, torrent):
             file_path = os.path.join(location[0], file_info[b'path'][0].decode())
             if os.path.basename(file_path) not in existing_files:
                 with open(file_path, 'wb') as f:
-                    print(f'Created file {file_path}')
+                    file_name = os.path.basename(file_path)
+                    print(f'\nCreated file {file_name}')
                     data = file_data[data_offset: data_offset + file_info[b'length']]
                     data_offset += file_info[b'length']
                     f.write(data)
-                    print (f'Write data to file {file_path} successfully.')
+                    print (f'Write data to file {file_name} successfully.')
             else:
                 data_offset += file_info[b'length']
                 print (f'File {file_path} already exists.')
@@ -437,10 +450,12 @@ def ask_user(port_sys, tracker_port_sys, peer_id_sys, location, torrent_list):
             while True:
                 if torrent_list: 
                     count = 1
+                    print (f'\n--------------------------------------\n')
                     for torrent in torrent_list:
-                        print('Torrent', count, torrent.get_name())
+                        print(f'{count}. Torrent {torrent.get_name()}')
                         count += 1
-                    answer = input("Which torrent file you want to run or Exit (e) ?\n")
+                    print (f'\n--------------------------------------\n')
+                    answer = input("\nChoose index of torrent file want to run or Exit (e) ?\n")
                     if answer.isdigit():
                         index = int (answer)
                         if (index < 1 or index > count):

@@ -64,6 +64,8 @@ def check_peer_status():
         current_time = time.time()
         swarm = [peer for peer in swarm if current_time - peer.get_last_contact() <= 120] #2minute
         time.sleep(60) #1 minute
+        print (swarm)
+        print ('\n --------------------------------- \n')
 
 
 @app.route('/', methods=['GET'])
